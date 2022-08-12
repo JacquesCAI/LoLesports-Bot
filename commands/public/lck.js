@@ -35,16 +35,11 @@ class LckCommand extends Command {
         "Erreur lors de la récupération des tournois de la LCK."
       )
     }
-
-    data.leagues[0].tournaments.forEach(tournament => {
-      if (lck[tournament.id] && lck[tournament.id].id != tournament.id) {
-        lck[tournament.id] = tournament
-        fs.writeFileSync("data/lck.json", JSON.stringify(lck, null, "\t"))
-      } else {
-        lck[tournament.id] = tournament
-        fs.writeFileSync("data/lck.json", JSON.stringify(lck, null, "\t"))
-      }
-    })
+    
+    fs.writeFileSync(
+      "data/lck.json",
+      JSON.stringify(data.leagues[0].tournaments, null, "\t")
+    )
 
     return message.channel.send(
       data.leagues[0].tournaments.length + " tournois trouvés."
