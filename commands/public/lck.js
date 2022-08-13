@@ -7,7 +7,7 @@ class LckCommand extends Command {
       aliases: ["lck"],
       category: "Public",
       description: {
-        content: "Recupère les données de la lck",
+        content: "Renvoie le classement de la LCK",
         usage: "lck"
       },
       typing: true
@@ -15,35 +15,51 @@ class LckCommand extends Command {
   }
 
   async exec(message) {
-    if (!fs.existsSync("data/leagues.json")) {
-      return message.channel.send(
-        "Le fichier de ligues JSON n'a pas été trouvé."
-      )
+    if (!fs.existsSync("data/lck.json")) {
+      return message.channel.send("Le fichier de LCK JSON n'a pas été trouvé.")
     }
 
-    const leagues = JSON.parse(fs.readFileSync("data/leagues.json"))
     const lck = JSON.parse(fs.readFileSync("data/lck.json"))
-    const params = {
-      leagueId: leagues["LCK"]
-    }
-    const data = await this.client.functions.get(
-      "getTournamentsForLeague",
-      params
-    )
-    if (!data) {
-      return message.channel.send(
-        "Erreur lors de la récupération des tournois de la LCK."
-      )
-    }
-    
-    fs.writeFileSync(
-      "data/lck.json",
-      JSON.stringify(data.leagues[0].tournaments, null, "\t")
-    )
+    const tournaments = lck
+      .sort(function(a, b) {
+        var aa = a.startDate.split("/").reverse().join(),
+          bb = b.startDate.split("/").reverse().join()
+        return aa < bb ? -1 : aa > bb ? 1 : 0
+      })
+      .reverse()
 
-    return message.channel.send(
-      data.leagues[0].tournaments.length + " tournois trouvés."
-    )
+    const params = {
+      tournamentId: tournaments[0].id
+    }
+    const data = await this.client.functions.get("getStandingsV3", params)
+    if (!data) {
+      return message.channel.send("Erreur lors de la récupération des ligues.")
+    }
+
+    const embed = this.client.functions
+      .embed()
+      .setTitle(
+        "Classement de la " +
+          data.standings[0].slug.replaceAll("_", " ").toUpperCase()
+      )
+
+    let description = ""
+
+    data.standings[0].stages[0].sections[0].rankings.forEach(el => {
+      if (el.teams.length > 1) {
+        el.teams.forEach(team => {
+          description += `**${el.ordinal}** - ${team.name} (${team.record
+            .wins}V-${team.record.losses})\n`
+        })
+      } else {
+        description += `**${el.ordinal}** - ${el.teams[0].name} (${el.teams[0]
+          .record.wins}V-${el.teams[0].record.losses})\n`
+      }
+    })
+
+    embed.setDescription(description)
+
+    return message.channel.send({ embeds: [embed] })
   }
 }
 
